@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Prueba BD</title>
+<script>
+	db = openDatabase('bd_prueba', '1.0', 'Base de datos de prueba', 2 * 1024 * 1024);
+	db.transaction(function (tx) {  
+   		tx.executeSql('CREATE TABLE IF NOT EXISTS PERSONA (id, nombre, apellido, telefono)');
+	});
+	
+	function cargarTabla()
+	{
+		db.transaction(function (tx) { 
+			tx.executeSql('SELECT * FROM PERSONA', [], function(tx,resultado){
+				var tam = resultado.rows.length, i;
+				for(i = 0; i < tam; i++)
+				{
+					agregarFila(resultado.rows.item(i).id, resultado.rows.item(i).nombre,resultado.rows.item(i).apellido,((!resultado.rows.item(i).telefono)? '':resultado.rows.item(i).telefono));
+				}
+			});
+		});		
+	}
+	
+	function registrar()
+	{
+		var idreg = document.getElementById('id').value;
+		
+		if(idreg)
+			actualizar(idreg);
+		else
+			guardar();
+	}
+	
+	function actualizar(idReg)
+	{
+		var nombre = document.getElementById('nombre').value;
+		var apellido = document.getElementById('apellido').value;
+		var telefono = document.getElementById('telefono').value;
+		
+		db.transaction(function (tx) { 
+			tx.executeSql('UPDATE PERSONA SET nombre = "'+nombre+'", apellido = "'+apellido+'", telefono = '+((!telefono)? 'NULL':telefono)+' WHERE id = '+idReg);
+			limpiar();
+			actualizarFila(idReg,nombre,apellido,telefono);
+		});	
+	}
+	
+	function guardar()
+	{
+		
+		var nombre = document.getElementById('nombre').value;
+		var apellido = document.getElementById('apellido').value;
+		var telefono = document.getElementById('telefono').value;		
+		
+		db.transaction(function (tx) { 
+			tx.executeSql('SELECT MAX(ID) id FROM PERSONA', [], function(tx,resultado){
+				var maxid = resultado.rows.item(0).id;
+				if(!maxid)
+					id = 1;
+				else
+					id = maxid+1;
+			});
+		});	
+		
+		db.transaction(function (tx) { 
+			tx.executeSql('INSERT INTO PERSONA (id, nombre, apellido, telefono) VALUES ('+id+',"'+nombre+'", "'+apellido+'", '+((!telefono)? 'NULL':telefono)+')');
+			agregarFila(id, nombre,apellido,telefono);
+			
+			document.getElementById('nombre').value = '';
+			document.getElementById('apellido').value = '';
+			document.getElementById('telefono').value = '';
+		});	
+	}
+	
+	function agregarFila(valid, valnombre, valapellido, valtelefono)
+	{
+		var tabla = document.getElementById('tabla');
+		var fila = document.createElement('tr');
+		    fila.id = valid;
+		var colNombre = document.createElement('td');
+		var colApellido = document.createElement('td');
+		var colTelefono = document.createElement('td');
+		var colEliminar = document.createElement('td');
+		var vinEliminar = document.createElement('a');
+		var nombre = document.createTextNode(valnombre);
+		var apellido = document.createTextNode(valapellido);
+		var telefono = document.createTextNode(valtelefono);
+		var eliminar = document.createTextNode('Eliminar');
+		
+		fila.onclick = function (){
+			db.transaction(function (tx) { 
+			tx.executeSql('SELECT * FROM PERSONA WHERE id = '+valid, [], function(tx,resultado){				
+					var idFila = resultado.rows.item(0).id; 
+					var nombreFila = resultado.rows.item(0).nombre;
+					var apellidoFila = resultado.rows.item(0).apellido;
+					var telefonoFila = ((!resultado.rows.item(0).telefono)? '':resultado.rows.item(0).telefono);
+					
+					document.getElementById('id').value = idFila;
+					document.getElementById('nombre').value = nombreFila;
+					document.getElementById('apellido').value = apellidoFila;
+					document.getElementById('telefono').value = telefonoFila;
+			});
+		});
+		}
+					
+		colNombre.appendChild(nombre);
+		colApellido.appendChild(apellido);
+		colTelefono.appendChild(telefono);
+		vinEliminar.href = '#';
+		vinEliminar.appendChild(eliminar);
+		vinEliminar.onclick = function (){
+								if(confirm('Seguro desea eliminar este registro?'))
+								{
+									db.transaction(function (tx) { 
+									tx.executeSql('DELETE FROM PERSONA WHERE id = '+valid);
+									});
+									var fila = document.getElementById(valid);
+									var tabla = document.getElementById('tabla');
+									tabla.removeChild(fila);
+									limpiar();
+								}
+							  };
+		colEliminar.appendChild(vinEliminar);
+		fila.appendChild(colNombre);
+		fila.appendChild(colApellido);
+		fila.appendChild(colTelefono);
+		fila.appendChild(colEliminar);
+					
+		tabla.appendChild(fila);
+	}
+	
+	function actualizarFila(idFila, nombre, apellido, telefono)
+	{
+		var fila = document.getElementById(idFila);
+		fila.childNodes[0].innerHTML = nombre;
+		fila.childNodes[1].innerHTML = apellido;
+		fila.childNodes[2].innerHTML = telefono;
+	}
+	
+	function limpiar()
+	{
+		document.getElementById('nombre').value = '';
+		document.getElementById('apellido').value = '';
+		document.getElementById('telefono').value = '';
+		document.getElementById('id').value = '';
+	}
+</script>
+</head>
+
+<body onLoad="cargarTabla()">
+Nombre<br>
+<input type="text" id="nombre"><br>
+Apellido<br>
+<input type="text" id="apellido"><br>
+Tel&eacute;fono<br>
+<input type="tel" id="telefono"><br>
+<input type="hidden" id="id">
+<input type="button" value="Guardar" onClick="registrar()">
+<input type="button" value="Limpiar" onClick="limpiar()"><br>
+<p>
+<table id="tabla" border="1" style="border-collapse:collapse">
+	<tr>
+    	<th>NOMBRE</th>
+        <th>APELLIDO</th>
+        <th>TEL&Eacute;FONO</th>
+        <th>ELIMINAR</th>
+    </tr>
+</table>
+</p>
+</body>
+</html>
